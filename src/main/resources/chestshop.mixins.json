@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.isaiah.mods.chestshop.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+  ],
+  "client": [
+    "SignMixin",
+    "PlayerNetworkMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
