@@ -16,11 +16,13 @@ import me.isaiah.mods.chestshop.interfaces.ISign;
 import me.isaiah.mods.economy.api.Economy;
 import me.isaiah.mods.economy.api.NoLoanPermittedException;
 import me.isaiah.mods.economy.api.UserDoesNotExistException;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.text.LiteralText;
@@ -38,10 +40,19 @@ public class PlayerInteractionMixin {
     @Shadow
     public ServerPlayerEntity player;
 
+    @Shadow
+    public int blockBreakingProgress;
+
+    @Shadow
+    public boolean mining;
+
+    @Shadow
+    public boolean failedToMine;
+
     long updateTime = 0;
 
     @SuppressWarnings("rawtypes")
-    @Inject(at = { @At(value = "INVOKE") }, method = { "interactBlock" }, cancellable = true)
+    @Inject(at = @At(value = "INVOKE"), method = "interactBlock", cancellable = true)
     public void rightClick(ServerPlayerEntity player, World world, ItemStack stack, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable ci) {
         long current = System.currentTimeMillis();
 
@@ -60,7 +71,9 @@ public class PlayerInteractionMixin {
                     if (ChestShopSign.isValid((ISign)(Object)sign)) {
                         String[] txt = ChestShopSign.readText((ISign)(Object)sign);
                         if (!txt[0].equalsIgnoreCase(this.player.getName().asString())) {
-                            this.player.sendSystemMessage(new LiteralText("Chest locked by ChestShop"), UUID.randomUUID());
+                            LiteralText msg = new LiteralText("Block locked by ChestShop");
+                            msg.setStyle(msg.getStyle().withColor(Formatting.RED));
+                            this.player.sendMessage(msg, true);
                             ci.cancel();
                             return;
                         }
@@ -88,8 +101,12 @@ public class PlayerInteractionMixin {
                     }
 
                     // Get selling Item
+                    int slot = 0;
                     String itemStr = txt[3].toLowerCase(Locale.ROOT);
-                    ItemStack item = chest.getStack(0);
+                    ItemStack item = chest.getStack(slot);
+                    while (null == item)
+                        item = chest.getStack(++slot);
+
                     String itemName = Registry.ITEM.getId(item.getItem()).toString().split(":")[1];
                     if (!itemName.equalsIgnoreCase(itemStr)) {
                         this.player.sendSystemMessage(new LiteralText("Shop is misconfigured"), UUID.randomUUID());
@@ -107,8 +124,9 @@ public class PlayerInteractionMixin {
                     // Get money
                     BigDecimal money = new BigDecimal(ChestShopSign.getBuyPrice((ISign)(Object)sign));
                     if (money.doubleValue() == -1) {
-                        System.out.println("SELL SIGN");
                         // Sell Sign
+                        updateTime = current;
+                        return;
                     }
 
                     // Move Money from buyer to seller
@@ -123,7 +141,7 @@ public class PlayerInteractionMixin {
                     }
 
                     // Give ItemStack
-                    ItemStack toGive = chest.removeStack(0, Integer.valueOf(txt[1]));
+                    ItemStack toGive = chest.removeStack(slot, Integer.valueOf(txt[1]));
                     this.player.giveItemStack(toGive);
 
                     // Send Bought message
@@ -136,9 +154,64 @@ public class PlayerInteractionMixin {
         }
     }
 
-    @Inject(at = { @At(value = "INVOKE") }, method = { "processBlockBreakingAction" })
-    public void leftClick(BlockPos pos, PlayerActionC2SPacket.Action action, Direction direction, int integer, CallbackInfo ci) {
-        System.out.println("blockBreak!!!");
+    @Inject(at = @At(value = "INVOKE"), method = "processBlockBreakingAction", cancellable = true)
+    public void leftClick(BlockPos blockpos, PlayerActionC2SPacket.Action action, Direction direction, int integer, CallbackInfo ci) {
+        long current = System.currentTimeMillis();
+        if (updateTime == 0 || current > updateTime + 10L) {
+            BlockEntity block = this.player.getServerWorld().getBlockEntity(blockpos);
+
+            if (block instanceof ChestBlockEntity) {
+                // Lock the Chest to the shop owner
+                ChestBlockEntity chest = (ChestBlockEntity) block;
+                BlockPos[] poses = getSuroundingBlocks(chest);
+
+                SignBlockEntity sign = null;
+                for (BlockPos pos : poses) {
+                    BlockEntity e;
+                    if ((e=chest.getWorld().getBlockEntity(pos)) instanceof SignBlockEntity) {
+                        sign = (SignBlockEntity) e;
+                        if (ChestShopSign.isValid((ISign)(Object)sign)) {
+                            String[] txt = ChestShopSign.readText((ISign)(Object)sign);
+                            if (!txt[0].equalsIgnoreCase(this.player.getName().asString())) {
+                                blockBreakingProgress = 0;
+                                mining = false;
+                                failedToMine = false;
+
+                                LiteralText msg = new LiteralText("Block locked by ChestShop");
+                                msg.setStyle(msg.getStyle().withColor(Formatting.RED));
+                                this.player.sendMessage(msg, true);
+                                ci.cancel();
+                                itStillExists(pos);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (block instanceof SignBlockEntity) {
+                SignBlockEntity sign = (SignBlockEntity) block;
+
+                if (ChestShopSign.isValid((ISign)(Object)sign)) {
+                    blockBreakingProgress = 0;
+                    mining = false;
+                    failedToMine = false;
+                    ci.cancel();
+                    itStillExists(blockpos);
+                }
+            }
+
+            updateTime = current;
+
+        }
+    }
+
+    // Let the client know that the block isn't broken
+    public void itStillExists(BlockPos pos) {
+        this.player.networkHandler.sendPacket(new BlockUpdateS2CPacket(this.player.getServerWorld(), pos));
+        BlockEntity tileentity = player.getServerWorld().getBlockEntity(pos);
+        if (tileentity != null)
+            this.player.networkHandler.sendPacket(tileentity.toUpdatePacket());
     }
 
     public BlockPos[] getSuroundingBlocks(BlockEntity e) {
