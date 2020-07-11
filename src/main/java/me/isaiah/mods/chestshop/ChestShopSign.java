@@ -6,9 +6,6 @@ import net.minecraft.text.Text;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-/**
- * @author Acrobot
- */
 public class ChestShopSign {
 
     public static final byte NAME_LINE = 0;
@@ -25,12 +22,12 @@ public class ChestShopSign {
     public static final String AUTOFILL_CODE = "?";
 
     public static String[] readText(ISign sign) {
-        Text[] text = sign.getText();
+        Text[] text = sign.chestshop_getText();
         return new String[] {text[0].asString(), text[1].asString(), text[2].asString(), text[3].asString()};
     }
 
     public static boolean isValid(ISign sign) {
-        Text[] text = sign.getText();
+        Text[] text = sign.chestshop_getText();
         String[] txt = new String[] {text[0].asString(), text[1].asString(), text[2].asString(), text[3].asString()};
         return isValid(txt);
     }
@@ -46,7 +43,13 @@ public class ChestShopSign {
             return -1;
 
         String priceString = priceLine.toUpperCase(Locale.ROOT).substring(priceLine.indexOf("B")+1).trim().split(":")[0];
+        if (priceString.equalsIgnoreCase("free"))
+            return 0;
         return Double.valueOf(priceString);
+    }
+
+    public static double getSellPrice(ISign sign) {
+        return 0.0;
     }
 
     public static boolean isValidPreparedSign(String[] lines) {

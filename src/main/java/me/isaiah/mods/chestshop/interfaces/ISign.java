@@ -4,6 +4,6 @@ import net.minecraft.text.Text;
 
 public interface ISign {
 
-    public Text[] getText();
+    public Text[] chestshop_getText();
 
 }

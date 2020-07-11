@@ -9,39 +9,43 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import me.isaiah.mods.chestshop.ChestShopSign;
 import me.isaiah.mods.chestshop.interfaces.ISign;
-
 import me.isaiah.mods.economy.api.Economy;
 import me.isaiah.mods.economy.api.NoLoanPermittedException;
 import me.isaiah.mods.economy.api.UserDoesNotExistException;
-
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.text.LiteralText;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.world.World;
 
-@Mixin(ServerPlayNetworkHandler.class)
-public class PlayerNetworkMixin {
+@Mixin(ServerPlayerInteractionManager.class)
+public class PlayerInteractionMixin {
 
     @Shadow
     public ServerPlayerEntity player;
 
     long updateTime = 0;
 
-    @Inject(method = "onPlayerInteractBlock", at = @At(value = "INVOKE"), cancellable = true)
-    public void onPlayerInteractBlock(PlayerInteractBlockC2SPacket packet, CallbackInfo ci) {
+    @SuppressWarnings("rawtypes")
+    @Inject(at = { @At(value = "INVOKE") }, method = { "interactBlock" }, cancellable = true)
+    public void rightClick(ServerPlayerEntity player, World world, ItemStack stack, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable ci) {
         long current = System.currentTimeMillis();
 
-        BlockEntity block = this.player.getServerWorld().getBlockEntity(packet.getBlockHitResult().getBlockPos());
+        BlockEntity block = this.player.getServerWorld().getBlockEntity(hitResult.getBlockPos());
 
         if (block instanceof ChestBlockEntity) {
             // Lock the Chest to the shop owner
@@ -56,6 +60,7 @@ public class PlayerNetworkMixin {
                     if (ChestShopSign.isValid((ISign)(Object)sign)) {
                         String[] txt = ChestShopSign.readText((ISign)(Object)sign);
                         if (!txt[0].equalsIgnoreCase(this.player.getName().asString())) {
+                            this.player.sendSystemMessage(new LiteralText("Chest locked by ChestShop"), UUID.randomUUID());
                             ci.cancel();
                             return;
                         }
@@ -129,6 +134,11 @@ public class PlayerNetworkMixin {
                 }
             }
         }
+    }
+
+    @Inject(at = { @At(value = "INVOKE") }, method = { "processBlockBreakingAction" })
+    public void leftClick(BlockPos pos, PlayerActionC2SPacket.Action action, Direction direction, int integer, CallbackInfo ci) {
+        System.out.println("blockBreak!!!");
     }
 
     public BlockPos[] getSuroundingBlocks(BlockEntity e) {

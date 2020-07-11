@@ -16,7 +16,7 @@ public class SignMixin implements ISign {
     private Text[] text;
 
     @Override
-    public Text[] getText() {
+    public Text[] chestshop_getText() {
         return text;
     }
 
