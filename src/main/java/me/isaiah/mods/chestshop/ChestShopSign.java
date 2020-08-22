@@ -49,7 +49,19 @@ public class ChestShopSign {
     }
 
     public static double getSellPrice(ISign sign) {
-        return 0.0;
+        String[] txt = readText(sign);
+        String priceLine = txt[PRICE_LINE];
+        if (!(priceLine.toUpperCase(Locale.ROOT).contains("S") || priceLine.contains(":")))
+            return -1;
+
+        String priceString = priceLine.toUpperCase(Locale.ROOT);
+        if (priceString.contains("B"))
+            priceString = priceString.split(":")[1];
+
+        priceString = priceString.substring(priceString.indexOf("S")+1).trim();
+        if (priceString.equalsIgnoreCase("free"))
+            return 0;
+        return Double.valueOf(priceString);
     }
 
     public static boolean isValidPreparedSign(String[] lines) {
