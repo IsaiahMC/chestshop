@@ -35,6 +35,10 @@ public class ChestShopSign {
     public static boolean isValid(String[] line) {
         return isValidPreparedSign(line) && (line[PRICE_LINE].toUpperCase(Locale.ROOT).contains("B") || line[PRICE_LINE].toUpperCase(Locale.ROOT).contains("S")) && !line[NAME_LINE].isEmpty();
     }
+    
+    public static boolean isValid_no_name(String[] line) {
+        return isValidPreparedSign_no_name(line) && (line[PRICE_LINE].toUpperCase(Locale.ROOT).contains("B") || line[PRICE_LINE].toUpperCase(Locale.ROOT).contains("S"));
+    }
 
     public static double getBuyPrice(ISign sign) {
         String[] txt = readText(sign);
@@ -66,6 +70,14 @@ public class ChestShopSign {
 
     public static boolean isValidPreparedSign(String[] lines) {
         for (int i = 0; i < 4; i++)
+            if (!SHOP_SIGN_PATTERN[i].matcher(lines[i]).matches())
+                return false;
+
+        return lines[PRICE_LINE].indexOf(':') == lines[PRICE_LINE].lastIndexOf(':');
+    }
+    
+    public static boolean isValidPreparedSign_no_name(String[] lines) {
+        for (int i = 1; i < 4; i++)
             if (!SHOP_SIGN_PATTERN[i].matcher(lines[i]).matches())
                 return false;
 

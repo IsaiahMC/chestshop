@@ -7,7 +7,10 @@
   ],
   "client": [
     "SignMixin",
-    "PlayerInteractionMixin"
+    "PlayerInteractionMixin",
+    "MixinExplosion",
+    "MixinServerPlayNetworkHandler",
+    "MixinUpdateSignC2SPacket"
   ],
   "injectors": {
     "defaultRequire": 1
