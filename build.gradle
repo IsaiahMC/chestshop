@@ -1,17 +1,17 @@
 plugins {
-	id 'fabric-loom' version '0.4-SNAPSHOT'
+	id 'fabric-loom' version '1.1-SNAPSHOT'
 	id 'maven-publish'
 }
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 archivesBaseName = project.archives_base_name
 version = project.mod_version
 group = project.maven_group
 
 repositories {
-    maven { url 'https://isaiah.fungus-soft.com/maven-repo/' }
+    maven { url 'https://isaiahpatton.github.io/maven-repo/' }
 }
 
 dependencies {
@@ -42,6 +42,8 @@ processResources {
 		exclude "fabric.mod.json"
 	}
 }
+
+tasks.withType(Copy).all { duplicatesStrategy 'exclude' }
 
 // ensure that the encoding is set to UTF-8, no matter what the system default is
 // this fixes some edge cases with special characters not displaying correctly
