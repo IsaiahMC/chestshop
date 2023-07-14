@@ -83,7 +83,7 @@ public class PlayerInteractionMixin {
         }
 
         if (block instanceof SignBlockEntity) {
-            if (updateTime == 0 || current > updateTime + 0L) {
+            if (updateTime == 0 || current > updateTime + 500L) {
                 SignBlockEntity sign = (SignBlockEntity) block;
 
                 if (ChestShopSign.isValid((ISign)(Object)sign)) {
@@ -218,7 +218,7 @@ public class PlayerInteractionMixin {
     @Inject(at = @At(value = "INVOKE"), method = "processBlockBreakingAction", cancellable = true)
     public void chestshop_left_click(BlockPos blockpos, PlayerActionC2SPacket.Action action, Direction direction, int integer, CallbackInfo ci) {
         long current = System.currentTimeMillis();
-        if (updateTime == 0 || current > updateTime + 0L) {
+        if (updateTime == 0 || current > updateTime + 700L) {
             BlockEntity block = this.player.getWorld().getBlockEntity(blockpos);
 
             if (block instanceof SignBlockEntity) {
